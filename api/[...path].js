@@ -21,12 +21,31 @@ module.exports = async (req, res) => {
     }
 
     // Lazy-load backend dependencies so /api/health can't crash on import
-    // eslint-disable-next-line global-require
-    const createApp = require('../backend/app');
-    // eslint-disable-next-line global-require
-    const { connectDB } = require('../backend/db');
-    // eslint-disable-next-line global-require
-    const { ensureBootstrapAdmin } = require('../backend/bootstrapAdmin');
+    let createApp, connectDB, ensureBootstrapAdmin;
+    
+    try {
+      // eslint-disable-next-line global-require
+      createApp = require('../backend/app');
+      // eslint-disable-next-line global-require
+      const dbModule = require('../backend/db');
+      connectDB = dbModule.connectDB;
+      // eslint-disable-next-line global-require
+      const bootstrapModule = require('../backend/bootstrapAdmin');
+      ensureBootstrapAdmin = bootstrapModule.ensureBootstrapAdmin;
+    } catch (requireErr) {
+      console.error('Failed to require backend modules:', requireErr.message);
+      console.error('__dirname:', __dirname);
+      console.error('process.cwd():', process.cwd());
+      const fs = require('fs');
+      const path = require('path');
+      const backendPath = path.join(__dirname, '../backend');
+      console.error('Backend path:', backendPath);
+      console.error('Backend exists:', fs.existsSync(backendPath));
+      if (fs.existsSync(backendPath)) {
+        console.error('Backend files:', fs.readdirSync(backendPath));
+      }
+      throw new Error(`Backend not found: ${requireErr.message}. Path: ${backendPath}`);
+    }
 
     // Ensure DB is connected (connection is cached between invocations when possible)
     await connectDB();

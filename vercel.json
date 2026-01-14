@@ -5,7 +5,9 @@
   "installCommand": "npm ci && cd admin-panel && npm ci",
   "functions": {
     "api/[...path].js": {
-      "includeFiles": "backend/**"
+      "includeFiles": "backend/**",
+      "memory": 1024,
+      "maxDuration": 30
     }
   },
   "routes": [
