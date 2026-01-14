@@ -1,87 +1,22 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
-const moment = require('moment-timezone');
 
-// Load environment variables
 dotenv.config();
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const bookingRoutes = require('./routes/bookings');
-const serviceRoutes = require('./routes/services');
-const adminRoutes = require('./routes/admin');
-const whatsappRoutes = require('./routes/whatsapp');
-const paymentRoutes = require('./routes/payments');
-
-// Import services
+const createApp = require('./app');
+const { connectDB } = require('./db');
 const { sendDailyNotifications } = require('./services/notificationService');
 const whatsappService = require('./services/whatsappService');
 
-const app = express();
+const app = createApp();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(helmet());
-const frontendOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-// Vercel provides VERCEL_URL as "<project>.vercel.app" (no protocol)
-if (process.env.VERCEL_URL) {
-  frontendOrigins.push(`https://${process.env.VERCEL_URL}`);
-}
-
-// Always allow local dev
-frontendOrigins.push('http://localhost:3000');
-
-const allowedOrigins = Array.from(new Set(frontendOrigins));
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow same-origin / server-to-server requests (no Origin header)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true
-  })
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Database connection
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-booking';
-
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err.message);
-  console.error('💡 Make sure MongoDB is running or check your MONGODB_URI in .env');
-  console.error('💡 For cloud MongoDB Atlas, use: mongodb+srv://username:password@cluster.mongodb.net/dbname');
-});
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api/payments', paymentRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+connectDB()
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err.message);
+    console.error('💡 Make sure MongoDB is running or check your MONGODB_URI in env vars');
+  });
 
 // Schedule daily notifications at 23:59 Riyadh time
 cron.schedule('59 23 * * *', () => {
@@ -89,15 +24,6 @@ cron.schedule('59 23 * * *', () => {
   sendDailyNotifications();
 }, {
   timezone: process.env.TIMEZONE || 'Asia/Riyadh'
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err : {}
-  });
 });
 
 // Start server
