@@ -34,7 +34,9 @@ export default async function handler(req, res) {
   }
 
   const backendBase = stripTrailingSlash(backend);
-  const targetUrl = `${backendBase}${req.url}`; // req.url already contains /api/...
+  // Depending on Vercel routing, req.url might be "/auth/login" or "/api/auth/login".
+  const path = req.url?.startsWith('/api') ? req.url : `/api${req.url || ''}`;
+  const targetUrl = `${backendBase}${path}`;
 
   const headers = { ...req.headers };
   // Remove hop-by-hop headers (Node lowercases header keys).
