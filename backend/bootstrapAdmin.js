@@ -13,22 +13,26 @@ async function ensureBootstrapAdmin() {
   const password = process.env.ADMIN_PASSWORD || '';
   const name = process.env.ADMIN_NAME || 'Admin User';
 
-  if (!email || !password) return { created: false, reason: 'ADMIN_EMAIL/ADMIN_PASSWORD not set' };
+  if (!email || !password) {
+    return { created: false, reason: 'ADMIN_EMAIL/ADMIN_PASSWORD not set' };
+  }
 
   const existingAdmin = await User.findOne({ role: 'admin' });
-  if (existingAdmin) return { created: false, reason: 'Admin already exists' };
+  if (existingAdmin) {
+    return { created: false, reason: 'Admin already exists' };
+  }
 
   const admin = new User({
     email,
-    password, // plaintext; User pre-save hook hashes it
+    password, // plaintext; User.save() hashes it
     name,
     role: 'admin',
     isActive: true
   });
+
   await admin.save();
 
   return { created: true, email };
 }
 
 module.exports = { ensureBootstrapAdmin };
-

@@ -13,10 +13,10 @@ const app = createApp();
 const PORT = process.env.PORT || 5000;
 
 connectDB()
-  .then(() => console.log('✅ MongoDB connected'))
+  .then(() => console.log('✅ Supabase connected'))
   .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.error('💡 Make sure MongoDB is running or check your MONGODB_URI in env vars');
+    console.error('❌ Supabase connection error:', err.message);
+    console.error('💡 Make sure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in env vars');
   });
 
 // Optional: auto-create first admin if ADMIN_EMAIL/ADMIN_PASSWORD are set

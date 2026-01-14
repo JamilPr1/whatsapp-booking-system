@@ -35,12 +35,12 @@ router.post('/login', [
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user.id || user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.json({ token, user: { id: user._id, role: user.role, name: user.name } });
+    res.json({ token, user: { id: user.id || user._id, role: user.role, name: user.name } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -80,12 +80,12 @@ router.post('/register', [
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user.id || user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({ token, user: { id: user._id, role: user.role, name: user.name } });
+    res.status(201).json({ token, user: { id: user.id || user._id, role: user.role, name: user.name } });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
