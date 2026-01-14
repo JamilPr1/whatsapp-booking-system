@@ -13,7 +13,7 @@ This guide will help you deploy the WhatsApp Booking System to Vercel.
 
 1. Go to [Railway.app](https://railway.app) and sign up/login
 2. Click "New Project" → "Deploy from GitHub repo"
-3. Select your repository: `furqansaadat855/whatsapp-booking-system`
+3. Select your repository: `JamilPr1/whatsapp-booking-system`
 4. Railway will auto-detect Node.js
 5. Set Root Directory to: `backend`
 6. Add Environment Variables:
@@ -34,7 +34,7 @@ This guide will help you deploy the WhatsApp Booking System to Vercel.
 
 1. Go to [Vercel.com](https://vercel.com) and sign up/login
 2. Click "Add New Project"
-3. Import your GitHub repository: `furqansaadat855/whatsapp-booking-system`
+3. Import your GitHub repository: `JamilPr1/whatsapp-booking-system`
 4. Configure:
    - **Framework Preset**: Vite
    - **Root Directory**: `admin-panel`
@@ -43,7 +43,11 @@ This guide will help you deploy the WhatsApp Booking System to Vercel.
    - **Install Command**: `npm install`
 5. Add Environment Variables:
    ```
-   VITE_API_URL=https://your-app.railway.app
+   # Recommended (since we added a Vercel serverless proxy for /api/*)
+   BACKEND_URL=https://your-app.railway.app
+
+   # Optional: if you want the frontend to call backend directly (not required)
+   # VITE_API_URL=https://your-app.railway.app
    ```
 6. Click "Deploy"
 
