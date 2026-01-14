@@ -1,9 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { toErrorMessage } from '../utils/errorMessage';
 
 const LoadingState = ({ message, fullScreen = false }) => {
   const { t } = useTranslation();
+  const safeMessage = toErrorMessage(message, t('common.loading'));
   return (
     <Box
       sx={{
@@ -19,7 +21,7 @@ const LoadingState = ({ message, fullScreen = false }) => {
     >
       <CircularProgress size={48} thickness={4} />
       <Typography variant="body2" color="text.secondary">
-        {message || t('common.loading')}
+        {safeMessage}
       </Typography>
     </Box>
   );
