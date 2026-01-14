@@ -97,6 +97,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop existing triggers if they exist (for re-running schema)
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_services_updated_at ON services;
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+DROP TRIGGER IF EXISTS update_schedules_updated_at ON schedules;
+
 -- Triggers to auto-update updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -115,6 +121,12 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for re-running schema)
+DROP POLICY IF EXISTS "Service role can do everything on users" ON users;
+DROP POLICY IF EXISTS "Service role can do everything on services" ON services;
+DROP POLICY IF EXISTS "Service role can do everything on bookings" ON bookings;
+DROP POLICY IF EXISTS "Service role can do everything on schedules" ON schedules;
 
 -- Policies: Allow service role to do everything (for backend API)
 CREATE POLICY "Service role can do everything on users" ON users
