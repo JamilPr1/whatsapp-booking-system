@@ -1,8 +1,9 @@
 {
-  "buildCommand": "cd admin-panel && npm install && npm run build",
+  "buildCommand": "cd admin-panel && npm ci && npm run build",
   "outputDirectory": "admin-panel/dist",
-  "installCommand": "cd admin-panel && npm install",
+  "installCommand": "cd admin-panel && npm ci",
   "framework": "vite",
+  "devCommand": "cd admin-panel && npm run dev",
   "rewrites": [
     {
       "source": "/(.*)",
