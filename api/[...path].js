@@ -23,28 +23,71 @@ module.exports = async (req, res) => {
     // Lazy-load backend dependencies so /api/health can't crash on import
     let createApp, connectDB, ensureBootstrapAdmin;
     
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Try multiple possible paths for backend
+    const possiblePaths = [
+      path.join(__dirname, '../backend/app'),      // Root Directory = blank (repo root)
+      path.join(process.cwd(), 'backend/app'),     // From project root
+      path.join(__dirname, '../../backend/app'),    // Alternative path
+      'backend/app'                                 // Relative to cwd
+    ];
+    
+    let backendAppPath = null;
+    let backendFound = false;
+    
+    for (const tryPath of possiblePaths) {
+      try {
+        const resolvedPath = require.resolve(tryPath, { paths: [__dirname, process.cwd()] });
+        if (fs.existsSync(resolvedPath)) {
+          backendAppPath = tryPath;
+          backendFound = true;
+          console.log('Backend found at:', resolvedPath);
+          break;
+        }
+      } catch (e) {
+        // Try next path
+        continue;
+      }
+    }
+    
+    if (!backendFound) {
+      // Debug: List all possible paths
+      console.error('Backend not found. Debug info:');
+      console.error('__dirname:', __dirname);
+      console.error('process.cwd():', process.cwd());
+      console.error('Tried paths:', possiblePaths);
+      
+      // Check if backend folder exists at all
+      const backendDirPaths = [
+        path.join(__dirname, '../backend'),
+        path.join(process.cwd(), 'backend'),
+        path.join(__dirname, '../../backend')
+      ];
+      
+      for (const dirPath of backendDirPaths) {
+        if (fs.existsSync(dirPath)) {
+          console.error(`Backend directory exists at: ${dirPath}`);
+          console.error('Files in backend:', fs.readdirSync(dirPath));
+        }
+      }
+      
+      throw new Error(`Backend module not found. Tried: ${possiblePaths.join(', ')}`);
+    }
+    
     try {
       // eslint-disable-next-line global-require
-      createApp = require('../backend/app');
+      createApp = require(backendAppPath);
       // eslint-disable-next-line global-require
-      const dbModule = require('../backend/db');
+      const dbModule = require(backendAppPath.replace('/app', '/db'));
       connectDB = dbModule.connectDB;
       // eslint-disable-next-line global-require
-      const bootstrapModule = require('../backend/bootstrapAdmin');
+      const bootstrapModule = require(backendAppPath.replace('/app', '/bootstrapAdmin'));
       ensureBootstrapAdmin = bootstrapModule.ensureBootstrapAdmin;
     } catch (requireErr) {
       console.error('Failed to require backend modules:', requireErr.message);
-      console.error('__dirname:', __dirname);
-      console.error('process.cwd():', process.cwd());
-      const fs = require('fs');
-      const path = require('path');
-      const backendPath = path.join(__dirname, '../backend');
-      console.error('Backend path:', backendPath);
-      console.error('Backend exists:', fs.existsSync(backendPath));
-      if (fs.existsSync(backendPath)) {
-        console.error('Backend files:', fs.readdirSync(backendPath));
-      }
-      throw new Error(`Backend not found: ${requireErr.message}. Path: ${backendPath}`);
+      throw new Error(`Backend require failed: ${requireErr.message}`);
     }
 
     // Ensure DB is connected (connection is cached between invocations when possible)
