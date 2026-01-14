@@ -67,7 +67,10 @@ CREATE INDEX IF NOT EXISTS idx_bookings_client ON bookings(client_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_service ON bookings(service_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_location_district ON bookings USING GIN ((location->>'district'));
+-- Index on location JSONB field (for general JSON queries)
+CREATE INDEX IF NOT EXISTS idx_bookings_location ON bookings USING GIN (location);
+-- For district queries, we'll use a functional index with text pattern
+CREATE INDEX IF NOT EXISTS idx_bookings_district ON bookings ((location->>'district'));
 
 -- Schedules table
 CREATE TABLE IF NOT EXISTS schedules (
