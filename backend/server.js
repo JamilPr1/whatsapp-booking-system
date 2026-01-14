@@ -7,6 +7,7 @@ const createApp = require('./app');
 const { connectDB } = require('./db');
 const { sendDailyNotifications } = require('./services/notificationService');
 const whatsappService = require('./services/whatsappService');
+const { ensureBootstrapAdmin } = require('./bootstrapAdmin');
 
 const app = createApp();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +18,11 @@ connectDB()
     console.error('❌ MongoDB connection error:', err.message);
     console.error('💡 Make sure MongoDB is running or check your MONGODB_URI in env vars');
   });
+
+// Optional: auto-create first admin if ADMIN_EMAIL/ADMIN_PASSWORD are set
+ensureBootstrapAdmin().catch((err) => {
+  console.warn('⚠️ Admin bootstrap skipped/failed:', err.message);
+});
 
 // Schedule daily notifications at 23:59 Riyadh time
 cron.schedule('59 23 * * *', () => {
