@@ -41,18 +41,8 @@ module.exports = async (req, res) => {
 
       const app = createApp();
       
-      // Express app expects Node.js req/res, Vercel provides compatible objects
-      return new Promise((resolve) => {
-        app(req, res, (err) => {
-          if (err) {
-            console.error('Express app error:', err);
-            res.statusCode = err.status || 500;
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            res.end(JSON.stringify({ error: String(err.message || err) }));
-          }
-          resolve();
-        });
-      });
+      // Express app handles Vercel req/res directly
+      return app(req, res);
     } catch (localErr) {
       // Log error for debugging
       console.error('Local backend load failed:', localErr.message, localErr.stack);
