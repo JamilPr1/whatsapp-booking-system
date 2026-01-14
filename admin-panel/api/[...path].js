@@ -28,7 +28,6 @@ module.exports = async (req, res) => {
     }
 
     // Try to use local backend first (when Root Directory = repo root)
-    let useLocalBackend = false;
     try {
       // eslint-disable-next-line global-require
       const createApp = require('../../backend/app');
@@ -41,10 +40,23 @@ module.exports = async (req, res) => {
       await ensureBootstrapAdmin();
 
       const app = createApp();
-      return app(req, res);
+      
+      // Express app expects Node.js req/res, Vercel provides compatible objects
+      return new Promise((resolve) => {
+        app(req, res, (err) => {
+          if (err) {
+            console.error('Express app error:', err);
+            res.statusCode = err.status || 500;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ error: String(err.message || err) }));
+          }
+          resolve();
+        });
+      });
     } catch (localErr) {
+      // Log error for debugging
+      console.error('Local backend load failed:', localErr.message, localErr.stack);
       // Backend not available locally, will try proxy
-      useLocalBackend = false;
     }
 
     // Fallback to proxy mode (when Root Directory = admin-panel)

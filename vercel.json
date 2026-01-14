@@ -3,6 +3,11 @@
   "buildCommand": "npm ci && cd admin-panel && npm ci && npm run build",
   "outputDirectory": "admin-panel/dist",
   "installCommand": "npm ci && cd admin-panel && npm ci",
+  "functions": {
+    "api/[...path].js": {
+      "includeFiles": "../backend/**"
+    }
+  },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "handle": "filesystem" },
