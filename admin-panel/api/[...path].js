@@ -50,6 +50,11 @@ module.exports = async (req, res) => {
         req.originalUrl = req.url;
       }
       
+      // Ensure baseUrl is set for Express routing
+      if (!req.baseUrl) {
+        req.baseUrl = '';
+      }
+      
       return app(req, res);
     } catch (localErr) {
       // Log error for debugging
