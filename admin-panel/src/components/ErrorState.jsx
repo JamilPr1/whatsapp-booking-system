@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Button } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { toErrorMessage } from '../utils/errorMessage';
 
 const ErrorState = ({ 
   title, 
@@ -26,7 +27,7 @@ const ErrorState = ({
         {title || t('common.error')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400 }}>
-        {message || t('common.noDataMessage')}
+        {toErrorMessage(message, t('common.noDataMessage'))}
       </Typography>
       {onRetry && (
         <Button variant="contained" color="error" onClick={onRetry}>

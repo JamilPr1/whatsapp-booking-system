@@ -30,6 +30,10 @@ router.post('/login', [
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET is missing' });
+    }
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -70,6 +74,10 @@ router.post('/register', [
     });
 
     await user.save();
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET is missing' });
+    }
 
     const token = jwt.sign(
       { userId: user._id, role: user.role },
