@@ -5,7 +5,7 @@
   "installCommand": "npm ci && cd admin-panel && npm ci",
   "functions": {
     "api/[...path].js": {
-      "includeFiles": "../../backend/**"
+      "includeFiles": "backend/**"
     }
   },
   "routes": [
