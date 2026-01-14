@@ -1,8 +1,9 @@
 {
-  "buildCommand": "npm run vercel-build",
+  "version": 2,
+  "buildCommand": "cd admin-panel && npm ci && npm run build",
   "outputDirectory": "admin-panel/dist",
   "installCommand": "cd admin-panel && npm ci",
-  "framework": null,
+  "framework": "vite",
   "rewrites": [
     {
       "source": "/(.*)",
