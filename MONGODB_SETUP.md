@@ -39,6 +39,11 @@
    - Add database name at the end: `...mongodb.net/whatsapp-booking?retryWrites=true&w=majority`
    - Final format: `mongodb+srv://admin:YourPassword@cluster0.xxxxx.mongodb.net/whatsapp-booking?retryWrites=true&w=majority`
 
+✅ **Good news**: the backend already reads `MONGODB_URI` automatically in:
+- `backend/server.js`
+- `backend/scripts/seedDemoData.js`
+- `backend/scripts/resetAdminPassword.js`
+
 ## Option 2: Local MongoDB
 
 ### Windows Installation:
