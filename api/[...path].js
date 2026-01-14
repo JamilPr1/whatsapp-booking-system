@@ -1,9 +1,3 @@
-const createApp = require('../backend/app');
-const { connectDB } = require('../backend/db');
-const { ensureBootstrapAdmin } = require('../backend/bootstrapAdmin');
-
-const app = createApp();
-
 module.exports = async (req, res) => {
   try {
     // Depending on Vercel routing, req.url might be "/auth/login" instead of "/api/auth/login"
@@ -26,11 +20,20 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // Lazy-load backend dependencies so /api/health can't crash on import
+    // eslint-disable-next-line global-require
+    const createApp = require('../backend/app');
+    // eslint-disable-next-line global-require
+    const { connectDB } = require('../backend/db');
+    // eslint-disable-next-line global-require
+    const { ensureBootstrapAdmin } = require('../backend/bootstrapAdmin');
+
     // Ensure DB is connected (connection is cached between invocations when possible)
     await connectDB();
     // Ensure an admin exists (if ADMIN_EMAIL/ADMIN_PASSWORD provided)
     await ensureBootstrapAdmin();
 
+    const app = createApp();
     return app(req, res);
   } catch (err) {
     // Never crash the function — always return a JSON error

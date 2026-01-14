@@ -11,7 +11,6 @@ const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/bookings');
 const serviceRoutes = require('./routes/services');
 const adminRoutes = require('./routes/admin');
-const whatsappRoutes = require('./routes/whatsapp');
 const paymentRoutes = require('./routes/payments');
 
 function buildCorsOptions() {
@@ -53,8 +52,19 @@ function createApp() {
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/services', serviceRoutes);
   app.use('/api/admin', adminRoutes);
-  app.use('/api/whatsapp', whatsappRoutes);
   app.use('/api/payments', paymentRoutes);
+
+  // WhatsApp Web.js is not suitable for serverless (Puppeteer/Chrome). Keep it opt-in.
+  if (process.env.ENABLE_WHATSAPP_WEB === 'true') {
+    // Lazy require so Vercel doesn't crash when WhatsApp is disabled
+    // eslint-disable-next-line global-require
+    const whatsappRoutes = require('./routes/whatsapp');
+    app.use('/api/whatsapp', whatsappRoutes);
+  } else {
+    app.use('/api/whatsapp', (req, res) => {
+      res.status(503).json({ error: 'WhatsApp Web integration is disabled on this deployment' });
+    });
+  }
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

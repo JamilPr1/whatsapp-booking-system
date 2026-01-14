@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "cd admin-panel && npm ci && npm run build",
+  "buildCommand": "npm ci && cd admin-panel && npm ci && npm run build",
   "outputDirectory": "admin-panel/dist",
-  "installCommand": "cd admin-panel && npm ci",
+  "installCommand": "npm ci && cd admin-panel && npm ci",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "handle": "filesystem" },
