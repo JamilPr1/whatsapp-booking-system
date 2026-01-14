@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -33,9 +33,7 @@ const Dashboard = React.memo(() => {
         window.location.href = '/login';
         return;
       }
-      const response = await axios.get('/api/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axiosInstance.get('/api/admin/dashboard');
       setStats(response.data);
     } catch (err) {
       console.error('Error fetching stats:', err);

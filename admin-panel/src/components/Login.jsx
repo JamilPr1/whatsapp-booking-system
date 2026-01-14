@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -44,7 +44,7 @@ const Login = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post('/api/auth/login', formData);
+      const response = await axiosInstance.post('/api/auth/login', formData);
       onLogin(response.data.token);
     } catch (err) {
       setError(err.response?.data?.error || t('login.error'));

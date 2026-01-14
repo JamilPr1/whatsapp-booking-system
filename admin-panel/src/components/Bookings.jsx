@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -30,10 +30,7 @@ const Bookings = React.memo(() => {
   const fetchBookings = useCallback(async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/bookings', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axiosInstance.get('/api/bookings');
       setBookings(response.data);
     } catch (err) {
       console.error('Error fetching bookings:', err);
@@ -54,10 +51,7 @@ const Bookings = React.memo(() => {
 
   const updateStatus = useCallback(async (id, status) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`/api/bookings/${id}/status`, { status }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axiosInstance.patch(`/api/bookings/${id}/status`, { status });
       fetchBookings();
     } catch (err) {
       console.error('Error updating status:', err);

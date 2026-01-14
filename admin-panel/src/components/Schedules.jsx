@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -28,10 +28,7 @@ const Schedules = React.memo(() => {
   const fetchSchedules = useCallback(async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/admin/schedules', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axiosInstance.get('/api/admin/schedules');
       setSchedules(response.data);
     } catch (err) {
       console.error('Error fetching schedules:', err);
@@ -57,10 +54,7 @@ const Schedules = React.memo(() => {
 
     try {
       setError(null);
-      const token = localStorage.getItem('token');
-      await axios.patch(`/api/admin/schedules/${id}/unlock`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axiosInstance.patch(`/api/admin/schedules/${id}/unlock`, {});
       fetchSchedules();
     } catch (err) {
       console.error('Error unlocking schedule:', err);

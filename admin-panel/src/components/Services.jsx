@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
@@ -40,7 +40,7 @@ const Services = React.memo(() => {
   const fetchServices = useCallback(async () => {
     try {
       setError(null);
-      const response = await axios.get('/api/services');
+      const response = await axiosInstance.get('/api/services');
       setServices(response.data);
     } catch (err) {
       console.error('Error fetching services:', err);
@@ -58,10 +58,7 @@ const Services = React.memo(() => {
     e.preventDefault();
     try {
       setError(null);
-      const token = localStorage.getItem('token');
-      await axios.post('/api/services', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axiosInstance.post('/api/services', formData);
       fetchServices();
       setOpen(false);
       setFormData({

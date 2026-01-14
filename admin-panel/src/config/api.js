@@ -1,5 +1,10 @@
 // API Configuration
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+//
+// In production on Vercel we default to same-origin calls ("/api/...") and
+// rely on the Serverless proxy at `admin-panel/api/[...path].js`.
+// If you want to call your backend directly, set VITE_API_URL to an absolute URL.
+const raw = (import.meta.env.VITE_API_URL || '').trim();
+const API_URL = raw.startsWith('http://') || raw.startsWith('https://') ? raw : '';
 
 export const apiClient = {
   baseURL: API_URL,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -26,10 +26,7 @@ const Users = React.memo(() => {
   const fetchUsers = useCallback(async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/admin/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axiosInstance.get('/api/admin/users');
       setUsers(response.data);
     } catch (err) {
       console.error('Error fetching users:', err);
