@@ -14,13 +14,16 @@ Sab code fixes push ho chuki hain. Ab sirf Vercel dashboard me **1 setting chang
 1. Project page pe **"Settings"** tab click karein (top menu me)
 2. Left sidebar me **"General"** section click karein
 
-### Step 3: Root Directory Change
+### Step 3: Root Directory Change (IMPORTANT!)
 1. Page scroll karein **"Build & Development Settings"** section tak
 2. **"Root Directory"** field dhoondhein
-3. Agar `admin-panel` likha hai, to:
-   - Field ko **clear** karein (delete karein)
-   - Ya **blank** chhod dein (kuch mat likhein)
+3. Field me jo bhi hai (`./` ya `admin-panel`):
+   - **Sab kuch select karein** (Ctrl+A ya triple-click)
+   - **Delete karein** (Backspace ya Delete key)
+   - Field **bilkul blank/empty** hona chahiye (kuch bhi nahi likha hona chahiye)
 4. **"Save"** button click karein (page ke bottom me)
+
+⚠️ **Important**: Field me `./` ya koi bhi text nahi hona chahiye - **bilkul blank/empty** rakhna hai!
 
 ### Step 4: Redeploy
 1. **"Deployments"** tab click karein
