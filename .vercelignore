@@ -11,3 +11,5 @@ node_modules/
 *.log
 dist/
 build/
+# Don't ignore backend folder - it's needed for API functions
+# backend/

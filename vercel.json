@@ -3,6 +3,7 @@
   "buildCommand": "npm ci && cd admin-panel && npm ci && npm run build",
   "outputDirectory": "admin-panel/dist",
   "installCommand": "npm ci && cd admin-panel && npm ci",
+  "framework": null,
   "functions": {
     "api/[...path].js": {
       "includeFiles": "backend/**",
