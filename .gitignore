@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+*.log
+dist/
+build/
+.whatsapp-session/
+.vscode/
+.idea/
+admin-panel/node_modules/
+admin-panel/build/
+admin-panel/.env
+admin-panel/dist/
+.vercel/
+*.pem
