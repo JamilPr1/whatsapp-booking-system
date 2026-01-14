@@ -6,6 +6,9 @@
 
 module.exports = async (req, res) => {
   try {
+    // Log incoming request for debugging
+    console.log('API Request:', { method: req.method, url: req.url, originalUrl: req.originalUrl });
+    
     // Normalize URL
     if (req.url && !req.url.startsWith('/api')) {
       req.url = `/api${req.url}`;
@@ -42,6 +45,11 @@ module.exports = async (req, res) => {
       const app = createApp();
       
       // Express app handles Vercel req/res directly
+      // Set originalUrl if not set (Express needs this for routing)
+      if (!req.originalUrl) {
+        req.originalUrl = req.url;
+      }
+      
       return app(req, res);
     } catch (localErr) {
       // Log error for debugging
