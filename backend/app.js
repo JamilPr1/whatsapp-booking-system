@@ -67,7 +67,13 @@ function createApp() {
   }
 
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'whatsapp-booking-system', environment: process.env.NODE_ENV || 'production' });
+  });
+
+  // 404 handler for unmatched routes (must be after all routes)
+  app.use((req, res) => {
+    console.error('404 - Route not found:', req.method, req.url, req.originalUrl);
+    res.status(404).json({ error: 'Route not found', method: req.method, path: req.url, originalUrl: req.originalUrl });
   });
 
   // Error handling middleware
