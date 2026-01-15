@@ -7,11 +7,12 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Import routes
+// Auth routes are safe to load immediately (only uses Supabase User model)
 const authRoutes = require('./routes/auth');
-const bookingRoutes = require('./routes/bookings');
-const serviceRoutes = require('./routes/services');
-const adminRoutes = require('./routes/admin');
-const paymentRoutes = require('./routes/payments');
+
+// Other routes use Mongoose models - lazy load them to avoid startup errors
+// These will only be loaded when the routes are actually accessed
+let bookingRoutes, serviceRoutes, adminRoutes, paymentRoutes;
 
 function buildCorsOptions() {
   const frontendOrigins = (process.env.FRONTEND_URL || '')
@@ -49,10 +50,64 @@ function createApp() {
   app.use(express.urlencoded({ extended: true }));
 
   app.use('/api/auth', authRoutes);
-  app.use('/api/bookings', bookingRoutes);
-  app.use('/api/services', serviceRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/payments', paymentRoutes);
+  
+  // Lazy-load routes that depend on Mongoose models
+  // This allows the app to start even if Mongoose models aren't migrated yet
+  app.use('/api/bookings', (req, res, next) => {
+    if (!bookingRoutes) {
+      try {
+        bookingRoutes = require('./routes/bookings');
+      } catch (err) {
+        console.error('Failed to load bookings routes:', err.message);
+        return res.status(503).json({ 
+          error: 'Bookings feature not available - models not migrated to Supabase yet' 
+        });
+      }
+    }
+    return bookingRoutes(req, res, next);
+  });
+  
+  app.use('/api/services', (req, res, next) => {
+    if (!serviceRoutes) {
+      try {
+        serviceRoutes = require('./routes/services');
+      } catch (err) {
+        console.error('Failed to load services routes:', err.message);
+        return res.status(503).json({ 
+          error: 'Services feature not available - models not migrated to Supabase yet' 
+        });
+      }
+    }
+    return serviceRoutes(req, res, next);
+  });
+  
+  app.use('/api/admin', (req, res, next) => {
+    if (!adminRoutes) {
+      try {
+        adminRoutes = require('./routes/admin');
+      } catch (err) {
+        console.error('Failed to load admin routes:', err.message);
+        return res.status(503).json({ 
+          error: 'Admin features not available - models not migrated to Supabase yet' 
+        });
+      }
+    }
+    return adminRoutes(req, res, next);
+  });
+  
+  app.use('/api/payments', (req, res, next) => {
+    if (!paymentRoutes) {
+      try {
+        paymentRoutes = require('./routes/payments');
+      } catch (err) {
+        console.error('Failed to load payments routes:', err.message);
+        return res.status(503).json({ 
+          error: 'Payments feature not available' 
+        });
+      }
+    }
+    return paymentRoutes(req, res, next);
+  });
 
   // WhatsApp Web.js is not suitable for serverless (Puppeteer/Chrome). Keep it opt-in.
   if (process.env.ENABLE_WHATSAPP_WEB === 'true') {
