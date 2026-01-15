@@ -64,6 +64,9 @@ function createApp() {
   // Seed route (for demo data - can be protected later)
   app.use('/api/seed', require('./routes/seed'));
   
+  // Cleanup route (for maintenance)
+  app.use('/api/cleanup', require('./routes/cleanup'));
+  
   // Lazy-load routes that depend on Mongoose models
   // This allows the app to start even if Mongoose models aren't migrated yet
   app.use('/api/bookings', (req, res, next) => {
