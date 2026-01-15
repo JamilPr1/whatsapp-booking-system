@@ -34,7 +34,17 @@ function buildCorsOptions() {
     origin: (origin, callback) => {
       // Allow same-origin / server-to-server requests (no Origin header)
       if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      
+      // Allow all Vercel deployment URLs (*.vercel.app)
+      if (origin && typeof origin === 'string' && origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Log blocked origin for debugging
+      console.warn(`CORS blocked for origin: ${origin}. Allowed origins:`, allowedOrigins);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true
