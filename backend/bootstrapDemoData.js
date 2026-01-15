@@ -11,17 +11,31 @@ const timezone = process.env.TIMEZONE || 'Asia/Riyadh';
  * Automatically seed demo data if database is empty
  * This runs on startup to ensure there's data for testing
  */
+// Track if seeding has been done in this process (prevent multiple runs)
+let hasSeeded = false;
+
 async function ensureDemoData() {
   try {
-    // Check if any bookings exist (quick check to see if data is already seeded)
+    // Prevent multiple seeding attempts in the same process
+    if (hasSeeded) {
+      console.log('ℹ️  Demo data already seeded in this session, skipping');
+      return { seeded: false, reason: 'Already seeded in this session' };
+    }
+
+    // Check if demo data already exists - check bookings, services, and client count
     const existingBookings = await Booking.countDocuments();
+    const existingServices = await Service.countDocuments({ isActive: true });
+    const existingClients = await User.countDocuments({ role: 'client' });
     
-    if (existingBookings > 0) {
-      console.log('ℹ️  Demo data already exists, skipping seed');
+    // If we have bookings OR (services > 3 AND clients >= 3), consider it seeded
+    if (existingBookings > 0 || (existingServices >= 3 && existingClients >= 3)) {
+      console.log(`ℹ️  Demo data already exists (${existingBookings} bookings, ${existingServices} services, ${existingClients} clients), skipping seed`);
+      hasSeeded = true;
       return { seeded: false, reason: 'Data already exists' };
     }
 
     console.log('🌱 Database appears empty, seeding demo data...');
+    hasSeeded = true; // Mark as seeded to prevent duplicate runs
 
     // Create Provider User
     let provider = await User.findOne({ role: 'provider' });
@@ -51,7 +65,7 @@ async function ensureDemoData() {
       console.log('✅ Created driver user');
     }
 
-    // Create 3 Demo Clients
+    // Create exactly 10 Demo Clients
     const clientData = [
       {
         name: 'Ahmed Al-Saud',
@@ -81,6 +95,76 @@ async function ensureDemoData() {
           longitude: 46.7219,
           address: 'King Abdulaziz Road, Al Wurud, Riyadh',
           district: 'Al Wurud'
+        }
+      },
+      {
+        name: 'Sara Al-Mutairi',
+        phoneNumber: '+966504444444',
+        location: {
+          latitude: 24.7000,
+          longitude: 46.6800,
+          address: 'Olaya Street, Riyadh',
+          district: 'Al Olaya'
+        }
+      },
+      {
+        name: 'Khalid Al-Otaibi',
+        phoneNumber: '+966505555555',
+        location: {
+          latitude: 24.6400,
+          longitude: 46.7200,
+          address: 'Malaz District, Riyadh',
+          district: 'Al Malaz'
+        }
+      },
+      {
+        name: 'Noura Al-Ghamdi',
+        phoneNumber: '+966506666666',
+        location: {
+          latitude: 24.6900,
+          longitude: 46.7300,
+          address: 'Wurud Area, Riyadh',
+          district: 'Al Wurud'
+        }
+      },
+      {
+        name: 'Faisal Al-Shammari',
+        phoneNumber: '+966507777777',
+        location: {
+          latitude: 24.7200,
+          longitude: 46.6700,
+          address: 'King Fahd Road, Riyadh',
+          district: 'Al Olaya'
+        }
+      },
+      {
+        name: 'Layla Al-Harbi',
+        phoneNumber: '+966508888888',
+        location: {
+          latitude: 24.6600,
+          longitude: 46.7100,
+          address: 'Sultan Road, Riyadh',
+          district: 'Al Malaz'
+        }
+      },
+      {
+        name: 'Omar Al-Qahtani',
+        phoneNumber: '+966509999999',
+        location: {
+          latitude: 24.6800,
+          longitude: 46.7400,
+          address: 'Abdulaziz Road, Riyadh',
+          district: 'Al Wurud'
+        }
+      },
+      {
+        name: 'Hanan Al-Dosari',
+        phoneNumber: '+966500000000',
+        location: {
+          latitude: 24.7100,
+          longitude: 46.6600,
+          address: 'Fahd Street, Riyadh',
+          district: 'Al Olaya'
         }
       }
     ];
@@ -405,7 +489,7 @@ async function ensureDemoData() {
 
     // Create bookings and schedules
     const createdBookings = [];
-    const createdSchedules = [];
+    const scheduleMap = new Map(); // Track schedules by date string
     
     for (const bookingData of bookingDataArray) {
       try {
@@ -414,48 +498,77 @@ async function ensureDemoData() {
           ? bookingData.bookingDate 
           : new Date(bookingData.bookingDate);
         
+        // Format date for schedule lookup
+        const dateStr = moment(bookingDateObj).format('YYYY-MM-DD');
+        
+        console.log(`Creating booking for ${dateStr} - ${bookingData.location.district}...`);
+        
         const booking = new Booking({
           ...bookingData,
           bookingDate: bookingDateObj
         });
         
         const savedBooking = await booking.save();
+        if (!savedBooking || !savedBooking.id) {
+          throw new Error('Booking save returned no ID');
+        }
+        
         createdBookings.push(savedBooking);
         console.log(`✅ Created booking: ${savedBooking.id} - ${bookingData.location.district} - ${bookingData.status}`);
 
         // Create or update schedule
         const bookingDate = moment(bookingDateObj).startOf('day');
-        let schedule = await Schedule.findOne({ date: bookingDate.toDate() });
+        let schedule = scheduleMap.get(dateStr);
         
         if (!schedule) {
-          schedule = new Schedule({
-            date: bookingDate.toDate(),
-            district: bookingData.location.district,
-            isLocked: true,
-            providerId: provider.id,
-            driverId: driver.id,
-            bookings: []
-          });
-          await schedule.save();
-          createdSchedules.push(schedule);
-          console.log(`✅ Created schedule for ${bookingDate.format('YYYY-MM-DD')} - ${bookingData.location.district}`);
+          // Check if schedule exists in database
+          schedule = await Schedule.findOne({ date: bookingDate.toDate() });
+          
+          if (!schedule) {
+            schedule = new Schedule({
+              date: bookingDate.toDate(),
+              district: bookingData.location.district,
+              isLocked: true,
+              providerId: provider.id,
+              driverId: driver.id,
+              bookings: []
+            });
+            await schedule.save();
+            if (!schedule.id) {
+              throw new Error('Schedule save returned no ID');
+            }
+            console.log(`✅ Created schedule for ${dateStr} - ${bookingData.location.district}`);
+          } else {
+            console.log(`✅ Found existing schedule for ${dateStr}`);
+          }
+          
+          scheduleMap.set(dateStr, schedule);
         }
         
         // Add booking ID to schedule bookings array
-        if (schedule.bookings && !schedule.bookings.includes(savedBooking.id)) {
+        if (!schedule.bookings) {
+          schedule.bookings = [];
+        }
+        
+        if (!schedule.bookings.includes(savedBooking.id)) {
           schedule.bookings.push(savedBooking.id);
           await schedule.save();
-          console.log(`✅ Added booking ${savedBooking.id} to schedule`);
-        } else if (!schedule.bookings) {
-          schedule.bookings = [savedBooking.id];
-          await schedule.save();
+          console.log(`✅ Added booking ${savedBooking.id} to schedule ${dateStr}`);
         }
       } catch (error) {
         console.error(`❌ Error creating booking for ${bookingData.location.district}:`, error.message);
-        console.error('Booking data:', JSON.stringify(bookingData, null, 2));
+        console.error('Error stack:', error.stack);
+        console.error('Booking data:', {
+          clientId: bookingData.clientId,
+          serviceId: bookingData.serviceId,
+          bookingDate: bookingData.bookingDate,
+          status: bookingData.status
+        });
         // Continue with next booking even if one fails
       }
     }
+    
+    const createdSchedules = Array.from(scheduleMap.values());
 
     console.log('✅ Demo data seeded successfully!');
     console.log(`   - Clients: ${clients.length}`);
