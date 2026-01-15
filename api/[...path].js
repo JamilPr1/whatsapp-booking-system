@@ -26,67 +26,68 @@ module.exports = async (req, res) => {
     const fs = require('fs');
     const path = require('path');
     
+    // In Vercel, __dirname points to /var/task/api, so backend is at /var/task/backend
     // Try multiple possible paths for backend
-    const possiblePaths = [
-      path.join(__dirname, '../backend/app'),      // Root Directory = blank (repo root)
-      path.join(process.cwd(), 'backend/app'),     // From project root
-      path.join(__dirname, '../../backend/app'),    // Alternative path
-      'backend/app'                                 // Relative to cwd
+    const possibleBackendDirs = [
+      path.join(__dirname, '../backend'),           // Most common: api/ -> backend/
+      path.join(process.cwd(), 'backend'),          // From project root
+      path.join(__dirname, '../../backend'),         // Alternative: api/../backend
+      path.resolve(__dirname, '../backend')         // Absolute resolution
     ];
     
-    let backendAppPath = null;
+    let backendDir = null;
     let backendFound = false;
     
-    for (const tryPath of possiblePaths) {
-      try {
-        const resolvedPath = require.resolve(tryPath, { paths: [__dirname, process.cwd()] });
-        if (fs.existsSync(resolvedPath)) {
-          backendAppPath = tryPath;
-          backendFound = true;
-          console.log('Backend found at:', resolvedPath);
-          break;
-        }
-      } catch (e) {
-        // Try next path
-        continue;
+    // Find backend directory first
+    for (const dirPath of possibleBackendDirs) {
+      if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+        backendDir = dirPath;
+        backendFound = true;
+        console.log('Backend directory found at:', backendDir);
+        break;
       }
     }
     
     if (!backendFound) {
       // Debug: List all possible paths
-      console.error('Backend not found. Debug info:');
+      console.error('Backend directory not found. Debug info:');
       console.error('__dirname:', __dirname);
       console.error('process.cwd():', process.cwd());
-      console.error('Tried paths:', possiblePaths);
+      console.error('Tried backend dirs:', possibleBackendDirs);
       
-      // Check if backend folder exists at all
-      const backendDirPaths = [
-        path.join(__dirname, '../backend'),
-        path.join(process.cwd(), 'backend'),
-        path.join(__dirname, '../../backend')
-      ];
-      
-      for (const dirPath of backendDirPaths) {
-        if (fs.existsSync(dirPath)) {
-          console.error(`Backend directory exists at: ${dirPath}`);
-          console.error('Files in backend:', fs.readdirSync(dirPath));
+      // List files in parent directories for debugging
+      try {
+        const parentDir = path.dirname(__dirname);
+        console.error('Parent dir exists:', fs.existsSync(parentDir));
+        if (fs.existsSync(parentDir)) {
+          console.error('Files in parent:', fs.readdirSync(parentDir));
         }
+      } catch (e) {
+        console.error('Could not read parent dir:', e.message);
       }
       
-      throw new Error(`Backend module not found. Tried: ${possiblePaths.join(', ')}`);
+      throw new Error(`Backend directory not found. Tried: ${possibleBackendDirs.join(', ')}`);
     }
     
+    // Now require modules using the found backend directory
     try {
+      const appPath = path.join(backendDir, 'app');
+      const dbPath = path.join(backendDir, 'db');
+      const bootstrapPath = path.join(backendDir, 'bootstrapAdmin');
+      
       // eslint-disable-next-line global-require
-      createApp = require(backendAppPath);
+      createApp = require(appPath);
       // eslint-disable-next-line global-require
-      const dbModule = require(backendAppPath.replace('/app', '/db'));
+      const dbModule = require(dbPath);
       connectDB = dbModule.connectDB;
       // eslint-disable-next-line global-require
-      const bootstrapModule = require(backendAppPath.replace('/app', '/bootstrapAdmin'));
+      const bootstrapModule = require(bootstrapPath);
       ensureBootstrapAdmin = bootstrapModule.ensureBootstrapAdmin;
+      
+      console.log('Backend modules loaded successfully');
     } catch (requireErr) {
       console.error('Failed to require backend modules:', requireErr.message);
+      console.error('Stack:', requireErr.stack);
       throw new Error(`Backend require failed: ${requireErr.message}`);
     }
 

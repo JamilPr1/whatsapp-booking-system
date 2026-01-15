@@ -11,8 +11,6 @@
       "maxDuration": 30
     }
   },
-  "buildCommand": "npm ci && cd admin-panel && npm ci && npm run build",
-  "installCommand": "npm ci && cd admin-panel && npm ci",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/[...path].js" },
     { "handle": "filesystem" },
