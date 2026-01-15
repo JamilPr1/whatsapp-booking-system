@@ -18,6 +18,9 @@ router.use((req, res, next) => {
 // Dashboard stats
 router.get('/dashboard', async (req, res) => {
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const stats = {
       totalBookings: await Booking.countDocuments(),
       pendingBookings: await Booking.countDocuments({ status: 'pending' }),
@@ -26,7 +29,7 @@ router.get('/dashboard', async (req, res) => {
       totalClients: await User.countDocuments({ role: 'client' }),
       totalServices: await Service.countDocuments({ isActive: true }),
       upcomingBookings: await Booking.countDocuments({
-        bookingDate: { $gte: new Date() },
+        bookingDate: { $gte: today },
         status: { $in: ['pending', 'confirmed'] }
       })
     };
@@ -40,7 +43,7 @@ router.get('/dashboard', async (req, res) => {
 // Get all users
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await User.find({ sort: { createdAt: -1 } });
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -76,9 +79,8 @@ router.get('/schedules', async (req, res) => {
       query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
     }
 
-    const schedules = await Schedule.find(query)
-      .populate('bookings')
-      .sort({ date: 1 });
+    const schedules = await Schedule.find(query);
+    // Note: populate is not needed - bookings are stored as UUID array in Supabase
 
     res.json(schedules);
   } catch (error) {

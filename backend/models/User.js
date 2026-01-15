@@ -113,12 +113,32 @@ class User {
       const sortField = query.sort.createdAt === -1 ? 'created_at' : 'created_at';
       const order = query.sort.createdAt === -1 ? 'desc' : 'asc';
       queryBuilder = queryBuilder.order(sortField, { ascending: order === 'asc' });
+    } else {
+      // Default sort by createdAt descending
+      queryBuilder = queryBuilder.order('created_at', { ascending: false });
     }
 
     const { data, error } = await queryBuilder;
 
     if (error) throw error;
     return data.map(item => new User(item));
+  }
+
+  static async countDocuments(query = {}) {
+    const supabase = getSupabaseClient();
+    let queryBuilder = supabase.from('users').select('*', { count: 'exact', head: true });
+
+    if (query.role) {
+      queryBuilder = queryBuilder.eq('role', query.role);
+    }
+    if (query.isActive !== undefined) {
+      queryBuilder = queryBuilder.eq('is_active', query.isActive);
+    }
+
+    const { count, error } = await queryBuilder;
+
+    if (error) throw error;
+    return count || 0;
   }
 
   async save() {

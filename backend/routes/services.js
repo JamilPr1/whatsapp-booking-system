@@ -6,11 +6,27 @@ const auth = require('../middleware/auth');
 // Get all active services
 router.get('/', async (req, res) => {
   try {
-    const services = await Service.find({ isActive: true })
-      .populate('parentService', 'name')
-      .sort({ category: 1, name: 1 });
+    const services = await Service.find({ isActive: true, sort: { category: 1, name: 1 } });
+    
+    // Populate parentService if needed
+    const populatedServices = await Promise.all(services.map(async (service) => {
+      const serviceObj = service.toJSON();
+      
+      if (service.parentServiceId) {
+        try {
+          const parent = await Service.findById(service.parentServiceId);
+          if (parent) {
+            serviceObj.parentService = { _id: parent.id, name: parent.name };
+          }
+        } catch (e) {
+          // Ignore populate errors
+        }
+      }
+      
+      return serviceObj;
+    }));
 
-    res.json(services);
+    res.json(populatedServices);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

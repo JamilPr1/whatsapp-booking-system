@@ -17,14 +17,29 @@ router.get('/', auth, async (req, res) => {
       query.providerId = req.user._id;
     }
 
-    const bookings = await Booking.find(query)
-      .populate('clientId', 'name phoneNumber')
-      .populate('serviceId', 'name price duration')
-      .populate('providerId', 'name')
-      .populate('driverId', 'name')
-      .sort({ bookingDate: -1 });
+    const bookings = await Booking.find({ ...query, sort: { bookingDate: -1 } });
+    
+    // Populate related data manually (Supabase doesn't have populate)
+    const populatedBookings = await Promise.all(bookings.map(async (booking) => {
+      const bookingObj = booking.toJSON();
+      
+      // Fetch related user/service data if needed
+      if (booking.clientId) {
+        try {
+          const User = require('../models/User');
+          const client = await User.findById(booking.clientId);
+          if (client) {
+            bookingObj.clientId = { _id: client.id, name: client.name, phoneNumber: client.phoneNumber };
+          }
+        } catch (e) {
+          // Ignore populate errors
+        }
+      }
+      
+      return bookingObj;
+    }));
 
-    res.json(bookings);
+    res.json(populatedBookings);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
