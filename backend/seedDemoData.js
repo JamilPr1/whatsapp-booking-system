@@ -156,11 +156,21 @@ async function seedDemoData() {
         });
         
         const savedBooking = await booking.save();
+        
+        if (!savedBooking || !savedBooking.id) {
+          throw new Error('Booking save failed - no ID returned');
+        }
+        
+        // Verify booking was actually saved
+        const verifyBooking = await Booking.findById(savedBooking.id);
+        if (!verifyBooking) {
+          throw new Error('Booking was not saved to database');
+        }
+        
         bookings.push(savedBooking);
-        console.log(`✅ Created booking: ${savedBooking.id} - ${config.status} - ${config.district}`);
+        console.log(`✅ Created booking: ${savedBooking.id} - ${config.status} - ${config.district} - ${dateStr}`);
         
         // Create or update schedule
-        const dateStr = bookingDate.format('YYYY-MM-DD');
         let schedule = scheduleMap.get(dateStr);
         
         if (!schedule) {
