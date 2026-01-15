@@ -17,7 +17,9 @@ router.get('/', auth, async (req, res) => {
       query.providerId = req.user._id;
     }
 
-    const bookings = await Booking.find({ ...query, sort: { bookingDate: -1 } });
+    // Remove sort from query and apply it separately
+    const { sort, ...bookingQuery } = query;
+    const bookings = await Booking.find({ ...bookingQuery, sort: { bookingDate: -1 } });
     
     // Populate related data manually (Supabase doesn't have populate)
     const populatedBookings = await Promise.all(bookings.map(async (booking) => {

@@ -27,11 +27,30 @@ async function ensureDemoData() {
     const existingServices = await Service.countDocuments({ isActive: true });
     const existingClients = await User.countDocuments({ role: 'client' });
     
-    // If we have bookings OR (services > 3 AND clients >= 3), consider it seeded
-    if (existingBookings > 0 || (existingServices >= 3 && existingClients >= 3)) {
+    // If we have bookings OR (services >= 4 AND clients >= 10), consider it seeded
+    // More strict check to prevent duplicate seeding
+    if (existingBookings >= 10 || (existingServices >= 4 && existingClients >= 10)) {
       console.log(`ℹ️  Demo data already exists (${existingBookings} bookings, ${existingServices} services, ${existingClients} clients), skipping seed`);
       hasSeeded = true;
       return { seeded: false, reason: 'Data already exists' };
+    }
+    
+    // If there are too many clients (more than 10), clean up excess
+    if (existingClients > 10) {
+      console.log(`⚠️  Found ${existingClients} clients, cleaning up excess...`);
+      try {
+        const allClients = await User.find({ role: 'client' });
+        // Keep only first 10, delete the rest
+        const clientsToDelete = allClients.slice(10);
+        for (const client of clientsToDelete) {
+          const { getSupabaseClient } = require('./db');
+          const supabase = getSupabaseClient();
+          await supabase.from('users').delete().eq('id', client.id);
+        }
+        console.log(`✅ Removed ${clientsToDelete.length} excess clients`);
+      } catch (cleanupError) {
+        console.error('Error cleaning up clients:', cleanupError.message);
+      }
     }
 
     console.log('🌱 Database appears empty, seeding demo data...');
@@ -170,19 +189,41 @@ async function ensureDemoData() {
     ];
 
     const clients = [];
-    for (const clientInfo of clientData) {
-      let client = await User.findOne({ phoneNumber: clientInfo.phoneNumber });
-      if (!client) {
-        client = new User({
-          ...clientInfo,
-          role: 'client',
-          isActive: true
-        });
-        await client.save();
-        clients.push(client);
-      } else {
-        clients.push(client);
+    // First, check how many clients we already have
+    const currentClientCount = await User.countDocuments({ role: 'client' });
+    
+    // Only create clients if we have less than 10
+    if (currentClientCount < 10) {
+      const clientsToCreate = 10 - currentClientCount;
+      console.log(`Creating ${clientsToCreate} clients (already have ${currentClientCount})...`);
+      
+      for (let i = 0; i < Math.min(clientsToCreate, clientData.length); i++) {
+        const clientInfo = clientData[i];
+        let client = await User.findOne({ phoneNumber: clientInfo.phoneNumber });
+        if (!client) {
+          client = new User({
+            ...clientInfo,
+            role: 'client',
+            isActive: true
+          });
+          await client.save();
+          clients.push(client);
+          console.log(`✅ Created client: ${clientInfo.name}`);
+        } else {
+          clients.push(client);
+          console.log(`ℹ️  Client already exists: ${clientInfo.name}`);
+        }
       }
+    } else {
+      // Get existing clients
+      const existingClients = await User.find({ role: 'client' });
+      clients.push(...existingClients.slice(0, 10));
+      console.log(`ℹ️  Using ${clients.length} existing clients`);
+    }
+    
+    // Ensure we have exactly 10 clients for bookings
+    if (clients.length < 10) {
+      console.warn(`⚠️  Only have ${clients.length} clients, but need 10 for bookings`);
     }
 
     // Create 4 Services
@@ -487,88 +528,107 @@ async function ensureDemoData() {
       }
     });
 
-    // Create bookings and schedules
-    const createdBookings = [];
-    const scheduleMap = new Map(); // Track schedules by date string
+    // Check if bookings already exist - if yes, skip creation
+    const existingBookingsCount = await Booking.countDocuments();
+    let createdBookings = [];
+    let createdSchedules = [];
     
-    for (const bookingData of bookingDataArray) {
-      try {
-        // Ensure bookingDate is a Date object
-        const bookingDateObj = bookingData.bookingDate instanceof Date 
-          ? bookingData.bookingDate 
-          : new Date(bookingData.bookingDate);
-        
-        // Format date for schedule lookup
-        const dateStr = moment(bookingDateObj).format('YYYY-MM-DD');
-        
-        console.log(`Creating booking for ${dateStr} - ${bookingData.location.district}...`);
-        
-        const booking = new Booking({
-          ...bookingData,
-          bookingDate: bookingDateObj
-        });
-        
-        const savedBooking = await booking.save();
-        if (!savedBooking || !savedBooking.id) {
-          throw new Error('Booking save returned no ID');
-        }
-        
-        createdBookings.push(savedBooking);
-        console.log(`✅ Created booking: ${savedBooking.id} - ${bookingData.location.district} - ${bookingData.status}`);
-
-        // Create or update schedule
-        const bookingDate = moment(bookingDateObj).startOf('day');
-        let schedule = scheduleMap.get(dateStr);
-        
-        if (!schedule) {
-          // Check if schedule exists in database
-          schedule = await Schedule.findOne({ date: bookingDate.toDate() });
-          
-          if (!schedule) {
-            schedule = new Schedule({
-              date: bookingDate.toDate(),
-              district: bookingData.location.district,
-              isLocked: true,
-              providerId: provider.id,
-              driverId: driver.id,
-              bookings: []
-            });
-            await schedule.save();
-            if (!schedule.id) {
-              throw new Error('Schedule save returned no ID');
-            }
-            console.log(`✅ Created schedule for ${dateStr} - ${bookingData.location.district}`);
-          } else {
-            console.log(`✅ Found existing schedule for ${dateStr}`);
+    if (existingBookingsCount >= 10) {
+      console.log(`ℹ️  Already have ${existingBookingsCount} bookings, skipping booking creation`);
+      // Fetch existing bookings to return count
+      const existingBookings = await Booking.find({});
+      createdBookings = existingBookings.slice(0, 10);
+    } else {
+      // Create bookings and schedules
+      const scheduleMap = new Map(); // Track schedules by date string
+      
+      console.log(`Creating ${bookingDataArray.length} bookings...`);
+      
+      for (const bookingData of bookingDataArray) {
+        try {
+          // Ensure we have valid client/service IDs
+          if (!bookingData.clientId || !bookingData.serviceId) {
+            console.error(`❌ Missing clientId or serviceId for booking`);
+            continue;
           }
           
-          scheduleMap.set(dateStr, schedule);
+          // Ensure bookingDate is a Date object
+          const bookingDateObj = bookingData.bookingDate instanceof Date 
+            ? bookingData.bookingDate 
+            : new Date(bookingData.bookingDate);
+          
+          // Format date for schedule lookup
+          const dateStr = moment(bookingDateObj).format('YYYY-MM-DD');
+          
+          console.log(`Creating booking for ${dateStr} - ${bookingData.location.district}...`);
+          
+          const booking = new Booking({
+            ...bookingData,
+            bookingDate: bookingDateObj
+          });
+          
+          const savedBooking = await booking.save();
+          if (!savedBooking || !savedBooking.id) {
+            throw new Error('Booking save returned no ID');
+          }
+          
+          createdBookings.push(savedBooking);
+          console.log(`✅ Created booking: ${savedBooking.id} - ${bookingData.location.district} - ${bookingData.status}`);
+
+          // Create or update schedule
+          const bookingDate = moment(bookingDateObj).startOf('day');
+          let schedule = scheduleMap.get(dateStr);
+          
+          if (!schedule) {
+            // Check if schedule exists in database
+            schedule = await Schedule.findOne({ date: bookingDate.toDate() });
+            
+            if (!schedule) {
+              schedule = new Schedule({
+                date: bookingDate.toDate(),
+                district: bookingData.location.district,
+                isLocked: true,
+                providerId: provider.id,
+                driverId: driver.id,
+                bookings: []
+              });
+              await schedule.save();
+              if (!schedule.id) {
+                throw new Error('Schedule save returned no ID');
+              }
+              console.log(`✅ Created schedule for ${dateStr} - ${bookingData.location.district}`);
+            } else {
+              console.log(`✅ Found existing schedule for ${dateStr}`);
+            }
+            
+            scheduleMap.set(dateStr, schedule);
+          }
+          
+          // Add booking ID to schedule bookings array
+          if (!schedule.bookings) {
+            schedule.bookings = [];
+          }
+          
+          if (!schedule.bookings.includes(savedBooking.id)) {
+            schedule.bookings.push(savedBooking.id);
+            await schedule.save();
+            console.log(`✅ Added booking ${savedBooking.id} to schedule ${dateStr}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error creating booking for ${bookingData.location.district}:`, error.message);
+          console.error('Error stack:', error.stack);
+          console.error('Booking data:', {
+            clientId: bookingData.clientId,
+            serviceId: bookingData.serviceId,
+            bookingDate: bookingData.bookingDate,
+            status: bookingData.status
+          });
+          // Continue with next booking even if one fails
         }
-        
-        // Add booking ID to schedule bookings array
-        if (!schedule.bookings) {
-          schedule.bookings = [];
-        }
-        
-        if (!schedule.bookings.includes(savedBooking.id)) {
-          schedule.bookings.push(savedBooking.id);
-          await schedule.save();
-          console.log(`✅ Added booking ${savedBooking.id} to schedule ${dateStr}`);
-        }
-      } catch (error) {
-        console.error(`❌ Error creating booking for ${bookingData.location.district}:`, error.message);
-        console.error('Error stack:', error.stack);
-        console.error('Booking data:', {
-          clientId: bookingData.clientId,
-          serviceId: bookingData.serviceId,
-          bookingDate: bookingData.bookingDate,
-          status: bookingData.status
-        });
-        // Continue with next booking even if one fails
       }
+      
+      createdSchedules = Array.from(scheduleMap.values());
     }
-    
-    const createdSchedules = Array.from(scheduleMap.values());
 
     console.log('✅ Demo data seeded successfully!');
     console.log(`   - Clients: ${clients.length}`);
