@@ -11,50 +11,59 @@ const timezone = process.env.TIMEZONE || 'Asia/Riyadh';
  * Automatically seed demo data if database is empty
  * This runs on startup to ensure there's data for testing
  */
-// Track if seeding has been done in this process (prevent multiple runs)
-let hasSeeded = false;
-
 async function ensureDemoData() {
   try {
-    // Prevent multiple seeding attempts in the same process
-    if (hasSeeded) {
-      console.log('ℹ️  Demo data already seeded in this session, skipping');
-      return { seeded: false, reason: 'Already seeded in this session' };
-    }
-
-    // Check if demo data already exists - check bookings, services, and client count
-    const existingBookings = await Booking.countDocuments();
-    const existingServices = await Service.countDocuments({ isActive: true });
+    const { getSupabaseClient } = require('./db');
+    const supabase = getSupabaseClient();
+    
+    // Step 1: Always ensure exactly 5 clients
     const existingClients = await User.countDocuments({ role: 'client' });
-    
-    // If we have bookings OR (services >= 4 AND clients >= 5), consider it seeded
-    // More strict check to prevent duplicate seeding
-    if (existingBookings >= 10 || (existingServices >= 4 && existingClients >= 5)) {
-      console.log(`ℹ️  Demo data already exists (${existingBookings} bookings, ${existingServices} services, ${existingClients} clients), skipping seed`);
-      hasSeeded = true;
-      return { seeded: false, reason: 'Data already exists' };
-    }
-    
-    // If there are too many clients (more than 5), clean up excess
-    if (existingClients > 5) {
-      console.log(`⚠️  Found ${existingClients} clients, cleaning up excess (keeping only 5)...`);
-      try {
+    if (existingClients !== 5) {
+      if (existingClients > 5) {
+        console.log(`⚠️  Found ${existingClients} clients, cleaning up excess (keeping only 5)...`);
         const allClients = await User.find({ role: 'client' });
-        // Keep only first 5, delete the rest
         const clientsToDelete = allClients.slice(5);
         for (const client of clientsToDelete) {
-          const { getSupabaseClient } = require('./db');
-          const supabase = getSupabaseClient();
           await supabase.from('users').delete().eq('id', client.id);
         }
         console.log(`✅ Removed ${clientsToDelete.length} excess clients`);
-      } catch (cleanupError) {
-        console.error('Error cleaning up clients:', cleanupError.message);
+      }
+    } else {
+      console.log(`✅ Have exactly ${existingClients} clients`);
+    }
+    
+    // Step 2: Always ensure exactly 10 bookings
+    const existingBookings = await Booking.countDocuments();
+    const existingServices = await Service.countDocuments({ isActive: true });
+    
+    // If we have exactly 10 bookings and 4+ services and 5 clients, we're done
+    if (existingBookings === 10 && existingServices >= 4) {
+      console.log(`✅ Demo data is complete (${existingBookings} bookings, ${existingServices} services)`);
+      return { seeded: false, reason: 'Data already complete', existingBookings, existingServices, existingClients };
+    }
+    
+    // If bookings count is wrong, clean up and recreate
+    if (existingBookings !== 10) {
+      if (existingBookings > 0) {
+        console.log(`⚠️  Found ${existingBookings} bookings (need 10), cleaning up...`);
+        const bookingsToDelete = await Booking.find({});
+        for (const booking of bookingsToDelete) {
+          await supabase.from('bookings').delete().eq('id', booking.id);
+        }
+        console.log(`✅ Deleted ${bookingsToDelete.length} existing bookings`);
+      }
+      
+      // Delete all schedules too
+      const existingSchedules = await Schedule.find({});
+      for (const schedule of existingSchedules) {
+        await supabase.from('schedules').delete().eq('id', schedule.id);
+      }
+      if (existingSchedules.length > 0) {
+        console.log(`✅ Deleted ${existingSchedules.length} existing schedules`);
       }
     }
 
-    console.log('🌱 Database appears empty, seeding demo data...');
-    hasSeeded = true; // Mark as seeded to prevent duplicate runs
+    console.log('🌱 Seeding demo data...');
 
     // Create Provider User
     let provider = await User.findOne({ role: 'provider' });
@@ -84,7 +93,7 @@ async function ensureDemoData() {
       console.log('✅ Created driver user');
     }
 
-    // Create exactly 10 Demo Clients
+    // Create exactly 5 Demo Clients (reduced from 10 for cleaner demo)
     const clientData = [
       {
         name: 'Ahmed Al-Saud',
@@ -189,17 +198,17 @@ async function ensureDemoData() {
     ];
 
     const clients = [];
-    // First, check how many clients we already have
+    // Get current client count
     const currentClientCount = await User.countDocuments({ role: 'client' });
-    
-    // Only create clients if we have less than 5 (keep it small for demo)
     const targetClientCount = 5;
+    
+    // Create clients to reach exactly 5
     if (currentClientCount < targetClientCount) {
       const clientsToCreate = targetClientCount - currentClientCount;
       console.log(`Creating ${clientsToCreate} clients (already have ${currentClientCount})...`);
       
       // Use first 5 clients from the data
-      for (let i = 0; i < Math.min(clientsToCreate, Math.min(targetClientCount, clientData.length)); i++) {
+      for (let i = 0; i < Math.min(clientsToCreate, 5); i++) {
         const clientInfo = clientData[i];
         let client = await User.findOne({ phoneNumber: clientInfo.phoneNumber });
         if (!client) {
@@ -216,17 +225,17 @@ async function ensureDemoData() {
           console.log(`ℹ️  Client already exists: ${clientInfo.name}`);
         }
       }
-    } else {
-      // Get existing clients (keep only first 5)
-      const existingClients = await User.find({ role: 'client' });
-      clients.push(...existingClients.slice(0, targetClientCount));
-      console.log(`ℹ️  Using ${clients.length} existing clients`);
     }
     
-    // Ensure we have at least 3 clients for bookings
+    // Get all clients (should be exactly 5 now)
+    const allClients = await User.find({ role: 'client' });
+    clients.push(...allClients.slice(0, targetClientCount));
+    
     if (clients.length < 3) {
-      console.warn(`⚠️  Only have ${clients.length} clients, need at least 3 for bookings`);
+      throw new Error(`Not enough clients (${clients.length}), need at least 3 for bookings`);
     }
+    
+    console.log(`✅ Using ${clients.length} clients for bookings`);
 
     // Create 4 Services
     const serviceData = [
@@ -530,17 +539,28 @@ async function ensureDemoData() {
       }
     });
 
-    // Check if bookings already exist - if yes, skip creation
+    // Always ensure we have 10 bookings - create them if missing
     const existingBookingsCount = await Booking.countDocuments();
     let createdBookings = [];
     let createdSchedules = [];
     
     if (existingBookingsCount >= 10) {
-      console.log(`ℹ️  Already have ${existingBookingsCount} bookings, skipping booking creation`);
+      console.log(`✅ Already have ${existingBookingsCount} bookings`);
       // Fetch existing bookings to return count
       const existingBookings = await Booking.find({});
       createdBookings = existingBookings.slice(0, 10);
     } else {
+      // Delete existing bookings if we have less than 10 (to start fresh)
+      if (existingBookingsCount > 0) {
+        console.log(`⚠️  Found ${existingBookingsCount} bookings (need 10), cleaning up...`);
+        const bookingsToDelete = await Booking.find({});
+        const { getSupabaseClient } = require('./db');
+        const supabase = getSupabaseClient();
+        for (const booking of bookingsToDelete) {
+          await supabase.from('bookings').delete().eq('id', booking.id);
+        }
+        console.log(`✅ Deleted ${bookingsToDelete.length} existing bookings`);
+      }
       // Create bookings and schedules
       const scheduleMap = new Map(); // Track schedules by date string
       
