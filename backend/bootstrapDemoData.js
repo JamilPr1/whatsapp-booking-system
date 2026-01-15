@@ -153,7 +153,7 @@ async function ensureDemoData() {
       }
     }
 
-    // Create 6 Demo Bookings
+    // Create 10 Demo Bookings for comprehensive testing
     const today = moment.tz(timezone);
     const bookingDataArray = [];
 
@@ -305,44 +305,170 @@ async function ensureDemoData() {
       }
     });
 
+    // Booking 7: 7 days from now - Confirmed
+    const day7 = today.clone().add(7, 'days');
+    bookingDataArray.push({
+      clientId: clients[0].id,
+      serviceId: services[2].id,
+      providerId: provider.id,
+      driverId: driver.id,
+      bookingDate: day7.toDate(),
+      bookingTime: '08:00',
+      location: {
+        latitude: 24.7136,
+        longitude: 46.6753,
+        address: 'King Fahd Road, Al Olaya, Riyadh',
+        district: 'Al Olaya'
+      },
+      status: 'confirmed',
+      payment: {
+        method: 'online',
+        status: 'paid',
+        amount: 300,
+        depositAmount: 75,
+        transactionId: 'demo_txn_005'
+      }
+    });
+
+    // Booking 8: 8 days from now - Pending
+    const day8 = today.clone().add(8, 'days');
+    bookingDataArray.push({
+      clientId: clients[1].id,
+      serviceId: services[3].id,
+      providerId: provider.id,
+      driverId: driver.id,
+      bookingDate: day8.toDate(),
+      bookingTime: '16:00',
+      location: {
+        latitude: 24.6508,
+        longitude: 46.7144,
+        address: 'Prince Sultan Road, Al Malaz, Riyadh',
+        district: 'Al Malaz'
+      },
+      status: 'pending',
+      payment: {
+        method: 'in-person',
+        status: 'pending',
+        amount: 150,
+        depositAmount: 0
+      }
+    });
+
+    // Booking 9: Today - In Progress (if today is a valid date)
+    bookingDataArray.push({
+      clientId: clients[2].id,
+      serviceId: services[0].id,
+      providerId: provider.id,
+      driverId: driver.id,
+      bookingDate: today.toDate(),
+      bookingTime: '12:00',
+      location: {
+        latitude: 24.6877,
+        longitude: 46.7219,
+        address: 'King Abdulaziz Road, Al Wurud, Riyadh',
+        district: 'Al Wurud'
+      },
+      status: 'in-progress',
+      payment: {
+        method: 'online',
+        status: 'partial',
+        amount: 250,
+        depositAmount: 50,
+        transactionId: 'demo_txn_006'
+      }
+    });
+
+    // Booking 10: Yesterday - Completed (past booking)
+    const yesterday = today.clone().subtract(1, 'day');
+    bookingDataArray.push({
+      clientId: clients[0].id,
+      serviceId: services[1].id,
+      providerId: provider.id,
+      driverId: driver.id,
+      bookingDate: yesterday.toDate(),
+      bookingTime: '14:30',
+      location: {
+        latitude: 24.7136,
+        longitude: 46.6753,
+        address: 'King Fahd Road, Al Olaya, Riyadh',
+        district: 'Al Olaya'
+      },
+      status: 'completed',
+      payment: {
+        method: 'online',
+        status: 'paid',
+        amount: 400,
+        depositAmount: 0,
+        transactionId: 'demo_txn_007'
+      }
+    });
+
     // Create bookings and schedules
     const createdBookings = [];
+    const createdSchedules = [];
+    
     for (const bookingData of bookingDataArray) {
-      const booking = new Booking(bookingData);
-      await booking.save();
-      createdBookings.push(booking);
-
-      // Create or update schedule
-      const bookingDate = moment(bookingData.bookingDate).startOf('day');
-      let schedule = await Schedule.findOne({ date: bookingDate.toDate() });
-      
-      if (!schedule) {
-        schedule = new Schedule({
-          date: bookingDate.toDate(),
-          district: bookingData.location.district,
-          isLocked: true,
-          providerId: provider.id,
-          driverId: driver.id,
-          bookings: []
+      try {
+        // Ensure bookingDate is a Date object
+        const bookingDateObj = bookingData.bookingDate instanceof Date 
+          ? bookingData.bookingDate 
+          : new Date(bookingData.bookingDate);
+        
+        const booking = new Booking({
+          ...bookingData,
+          bookingDate: bookingDateObj
         });
+        
+        const savedBooking = await booking.save();
+        createdBookings.push(savedBooking);
+        console.log(`✅ Created booking: ${savedBooking.id} - ${bookingData.location.district} - ${bookingData.status}`);
+
+        // Create or update schedule
+        const bookingDate = moment(bookingDateObj).startOf('day');
+        let schedule = await Schedule.findOne({ date: bookingDate.toDate() });
+        
+        if (!schedule) {
+          schedule = new Schedule({
+            date: bookingDate.toDate(),
+            district: bookingData.location.district,
+            isLocked: true,
+            providerId: provider.id,
+            driverId: driver.id,
+            bookings: []
+          });
+          await schedule.save();
+          createdSchedules.push(schedule);
+          console.log(`✅ Created schedule for ${bookingDate.format('YYYY-MM-DD')} - ${bookingData.location.district}`);
+        }
+        
+        // Add booking ID to schedule bookings array
+        if (schedule.bookings && !schedule.bookings.includes(savedBooking.id)) {
+          schedule.bookings.push(savedBooking.id);
+          await schedule.save();
+          console.log(`✅ Added booking ${savedBooking.id} to schedule`);
+        } else if (!schedule.bookings) {
+          schedule.bookings = [savedBooking.id];
+          await schedule.save();
+        }
+      } catch (error) {
+        console.error(`❌ Error creating booking for ${bookingData.location.district}:`, error.message);
+        console.error('Booking data:', JSON.stringify(bookingData, null, 2));
+        // Continue with next booking even if one fails
       }
-      
-      if (!schedule.bookings.includes(booking.id)) {
-        schedule.bookings.push(booking.id);
-      }
-      await schedule.save();
     }
 
     console.log('✅ Demo data seeded successfully!');
     console.log(`   - Clients: ${clients.length}`);
     console.log(`   - Services: ${services.length}`);
     console.log(`   - Bookings: ${createdBookings.length}`);
+    console.log(`   - Schedules: ${createdSchedules.length}`);
 
     return { 
       seeded: true, 
       clients: clients.length,
       services: services.length,
-      bookings: createdBookings.length
+      bookings: createdBookings.length,
+      schedules: createdSchedules.length
     };
   } catch (error) {
     console.error('❌ Error seeding demo data:', error.message);
