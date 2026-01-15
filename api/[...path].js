@@ -95,6 +95,17 @@ module.exports = async (req, res) => {
     await connectDB();
     // Ensure an admin exists (if ADMIN_EMAIL/ADMIN_PASSWORD provided)
     await ensureBootstrapAdmin();
+    
+    // Automatically seed demo data if database is empty
+    try {
+      // eslint-disable-next-line global-require
+      const demoDataModule = require(path.join(backendDir, 'bootstrapDemoData'));
+      const { ensureDemoData } = demoDataModule;
+      await ensureDemoData();
+    } catch (demoErr) {
+      // Don't fail if demo data seeding fails
+      console.warn('Demo data seeding skipped:', demoErr.message);
+    }
 
     const app = createApp();
     
