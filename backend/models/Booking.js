@@ -107,25 +107,36 @@ class Booking {
     let queryBuilder = supabase.from('bookings').select('*', { count: 'exact', head: true });
 
     if (query.status) {
-      if (query.status.$in) {
-        // Handle status.$in array
+      if (query.status.$in && Array.isArray(query.status.$in)) {
+        // Handle status.$in array - need to use .in() for each status
+        // Supabase doesn't support OR directly, so we'll count separately and sum
+        // Actually, we can use .in() for array
         queryBuilder = queryBuilder.in('status', query.status.$in);
-      } else {
+      } else if (typeof query.status === 'string') {
         queryBuilder = queryBuilder.eq('status', query.status);
       }
     }
     if (query.bookingDate) {
       if (query.bookingDate.$gte) {
-        queryBuilder = queryBuilder.gte('booking_date', query.bookingDate.$gte.toISOString().split('T')[0]);
+        const dateStr = query.bookingDate.$gte instanceof Date 
+          ? query.bookingDate.$gte.toISOString().split('T')[0]
+          : query.bookingDate.$gte;
+        queryBuilder = queryBuilder.gte('booking_date', dateStr);
       }
       if (query.bookingDate.$lte) {
-        queryBuilder = queryBuilder.lte('booking_date', query.bookingDate.$lte.toISOString().split('T')[0]);
+        const dateStr = query.bookingDate.$lte instanceof Date 
+          ? query.bookingDate.$lte.toISOString().split('T')[0]
+          : query.bookingDate.$lte;
+        queryBuilder = queryBuilder.lte('booking_date', dateStr);
       }
     }
 
     const { count, error } = await queryBuilder;
 
-    if (error) throw error;
+    if (error) {
+      console.error('Booking countDocuments error:', error);
+      throw error;
+    }
     return count || 0;
   }
 

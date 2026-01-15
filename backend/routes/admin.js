@@ -28,10 +28,10 @@ router.get('/dashboard', async (req, res) => {
       completedBookings: await Booking.countDocuments({ status: 'completed' }),
       totalClients: await User.countDocuments({ role: 'client' }),
       totalServices: await Service.countDocuments({ isActive: true }),
-      upcomingBookings: await Booking.countDocuments({
+      upcomingBookings: (await Booking.countDocuments({
         bookingDate: { $gte: today },
         status: { $in: ['pending', 'confirmed'] }
-      })
+      })) || 0
     };
 
     res.json(stats);

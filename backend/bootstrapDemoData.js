@@ -27,21 +27,21 @@ async function ensureDemoData() {
     const existingServices = await Service.countDocuments({ isActive: true });
     const existingClients = await User.countDocuments({ role: 'client' });
     
-    // If we have bookings OR (services >= 4 AND clients >= 10), consider it seeded
+    // If we have bookings OR (services >= 4 AND clients >= 5), consider it seeded
     // More strict check to prevent duplicate seeding
-    if (existingBookings >= 10 || (existingServices >= 4 && existingClients >= 10)) {
+    if (existingBookings >= 10 || (existingServices >= 4 && existingClients >= 5)) {
       console.log(`ℹ️  Demo data already exists (${existingBookings} bookings, ${existingServices} services, ${existingClients} clients), skipping seed`);
       hasSeeded = true;
       return { seeded: false, reason: 'Data already exists' };
     }
     
-    // If there are too many clients (more than 10), clean up excess
-    if (existingClients > 10) {
-      console.log(`⚠️  Found ${existingClients} clients, cleaning up excess...`);
+    // If there are too many clients (more than 5), clean up excess
+    if (existingClients > 5) {
+      console.log(`⚠️  Found ${existingClients} clients, cleaning up excess (keeping only 5)...`);
       try {
         const allClients = await User.find({ role: 'client' });
-        // Keep only first 10, delete the rest
-        const clientsToDelete = allClients.slice(10);
+        // Keep only first 5, delete the rest
+        const clientsToDelete = allClients.slice(5);
         for (const client of clientsToDelete) {
           const { getSupabaseClient } = require('./db');
           const supabase = getSupabaseClient();
@@ -192,12 +192,14 @@ async function ensureDemoData() {
     // First, check how many clients we already have
     const currentClientCount = await User.countDocuments({ role: 'client' });
     
-    // Only create clients if we have less than 10
-    if (currentClientCount < 10) {
-      const clientsToCreate = 10 - currentClientCount;
+    // Only create clients if we have less than 5 (keep it small for demo)
+    const targetClientCount = 5;
+    if (currentClientCount < targetClientCount) {
+      const clientsToCreate = targetClientCount - currentClientCount;
       console.log(`Creating ${clientsToCreate} clients (already have ${currentClientCount})...`);
       
-      for (let i = 0; i < Math.min(clientsToCreate, clientData.length); i++) {
+      // Use first 5 clients from the data
+      for (let i = 0; i < Math.min(clientsToCreate, Math.min(targetClientCount, clientData.length)); i++) {
         const clientInfo = clientData[i];
         let client = await User.findOne({ phoneNumber: clientInfo.phoneNumber });
         if (!client) {
@@ -215,15 +217,15 @@ async function ensureDemoData() {
         }
       }
     } else {
-      // Get existing clients
+      // Get existing clients (keep only first 5)
       const existingClients = await User.find({ role: 'client' });
-      clients.push(...existingClients.slice(0, 10));
+      clients.push(...existingClients.slice(0, targetClientCount));
       console.log(`ℹ️  Using ${clients.length} existing clients`);
     }
     
-    // Ensure we have exactly 10 clients for bookings
-    if (clients.length < 10) {
-      console.warn(`⚠️  Only have ${clients.length} clients, but need 10 for bookings`);
+    // Ensure we have at least 3 clients for bookings
+    if (clients.length < 3) {
+      console.warn(`⚠️  Only have ${clients.length} clients, need at least 3 for bookings`);
     }
 
     // Create 4 Services
