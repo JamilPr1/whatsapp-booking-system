@@ -1,17 +1,14 @@
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const { connectDB } = require('../db');
 const User = require('../models/User');
 
 dotenv.config();
 
 async function checkAdmin() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-booking', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await connectDB();
 
-    const admin = await User.findOne({ role: 'admin' }).select('+password');
+    const admin = await User.findOne({ role: 'admin' });
     
     if (!admin) {
       console.log('❌ No admin found');

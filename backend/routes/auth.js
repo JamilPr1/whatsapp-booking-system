@@ -17,9 +17,9 @@ router.post('/login', [
     }
 
     const { email, password } = req.body;
-    // Always select password field explicitly
     // Email is stored lowercase, so search with lowercase
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    // Password is always included in Supabase queries
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user || !user.password) {
       return res.status(401).json({ error: 'Invalid credentials' });

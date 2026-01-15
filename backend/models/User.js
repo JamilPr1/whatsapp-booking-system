@@ -16,8 +16,9 @@ class User {
     this.updatedAt = data.updated_at;
   }
 
-  static async findOne(query) {
+  static async findOne(query, options = {}) {
     const supabase = getSupabaseClient();
+    // Always select all fields including password (Supabase doesn't hide it by default)
     let queryBuilder = supabase.from('users').select('*').limit(1);
 
     if (query._id) {
@@ -46,7 +47,13 @@ class User {
       throw error;
     }
 
-    return data ? new User(data) : null;
+    if (!data) return null;
+
+    const user = new User(data);
+    
+    // Handle .select('+password') compatibility - password is always included in Supabase
+    // If select was called, it's already included, so just return the user
+    return user;
   }
 
   static async findById(id) {
