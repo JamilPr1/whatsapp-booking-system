@@ -564,13 +564,41 @@ async function ensureDemoData() {
       // Create bookings and schedules
       const scheduleMap = new Map(); // Track schedules by date string
       
-      console.log(`Creating ${bookingDataArray.length} bookings...`);
+      // Verify we have clients and services before creating bookings
+      if (clients.length < 3) {
+        throw new Error(`Not enough clients (${clients.length}), need at least 3 for bookings`);
+      }
+      if (services.length < 4) {
+        throw new Error(`Not enough services (${services.length}), need at least 4 for bookings`);
+      }
+      if (!provider || !provider.id) {
+        throw new Error('Provider not found or missing ID');
+      }
+      if (!driver || !driver.id) {
+        throw new Error('Driver not found or missing ID');
+      }
+      
+      console.log(`Creating ${bookingDataArray.length} bookings with ${clients.length} clients and ${services.length} services...`);
       
       for (const bookingData of bookingDataArray) {
         try {
           // Ensure we have valid client/service IDs
           if (!bookingData.clientId || !bookingData.serviceId) {
             console.error(`❌ Missing clientId or serviceId for booking`);
+            console.error('Booking data:', { clientId: bookingData.clientId, serviceId: bookingData.serviceId });
+            continue;
+          }
+          
+          // Verify client and service exist
+          const clientExists = clients.some(c => c.id === bookingData.clientId);
+          const serviceExists = services.some(s => s.id === bookingData.serviceId);
+          
+          if (!clientExists) {
+            console.error(`❌ Client ${bookingData.clientId} not found in clients array`);
+            continue;
+          }
+          if (!serviceExists) {
+            console.error(`❌ Service ${bookingData.serviceId} not found in services array`);
             continue;
           }
           
