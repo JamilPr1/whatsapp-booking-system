@@ -11,7 +11,8 @@
     "install-all": "npm install && cd backend && npm install && cd ../admin-panel && npm install",
     "build": "cd admin-panel && npm install && npm run build",
     "vercel-build": "cd admin-panel && npm ci && npm run build",
-    "seed": "node backend/scripts/seedDemoData.js"
+    "seed": "node backend/scripts/seedDemoDataSupabase.js",
+    "seed:supabase": "node backend/scripts/seedDemoDataSupabase.js"
   },
   "keywords": ["whatsapp", "booking", "appointments", "on-site-services"],
   "author": "",
