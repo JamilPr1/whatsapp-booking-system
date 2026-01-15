@@ -133,6 +133,8 @@ async function seedDemoData() {
     for (const config of bookingConfigs) {
       try {
         const bookingDate = today.clone().add(config.days, 'days');
+        const bookingDateObj = bookingDate.toDate();
+        const dateStr = bookingDate.format('YYYY-MM-DD');
         const client = clients[config.clientIdx];
         const service = services[config.serviceIdx];
         
@@ -143,12 +145,14 @@ async function seedDemoData() {
         
         const location = clientData[config.clientIdx].location;
         
+        console.log(`Creating booking for ${dateStr}: client=${client.id}, service=${service.id}, status=${config.status}`);
+        
         const booking = new Booking({
           clientId: client.id,
           serviceId: service.id,
           providerId: provider.id,
           driverId: driver.id,
-          bookingDate: bookingDate.toDate(),
+          bookingDate: bookingDateObj,
           bookingTime: config.time,
           location: location,
           status: config.status,
