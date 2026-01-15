@@ -71,9 +71,9 @@ router.post('/reseed-bookings', async (req, res) => {
       });
     }
     
-    // Import and run demo data seeding for bookings only
-    const { ensureDemoData } = require('../bootstrapDemoData');
-    const result = await ensureDemoData();
+    // Use the clean seedDemoData function
+    const { seedDemoData } = require('../seedDemoData');
+    const result = await seedDemoData();
     
     res.json({
       success: true,
@@ -84,7 +84,8 @@ router.post('/reseed-bookings', async (req, res) => {
     console.error('Reseed error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -128,12 +129,9 @@ router.post('/force-demo-data', async (req, res) => {
     }
     console.log(`✅ Deleted ${schedulesDeleted} existing schedules`);
     
-    // Step 4: Reset the hasSeeded flag and force seed
-    // Clear the module cache to reset the flag
-    delete require.cache[require.resolve('../bootstrapDemoData')];
-    const { ensureDemoData } = require('../bootstrapDemoData');
-    
-    const result = await ensureDemoData();
+    // Step 4: Force seed using clean function
+    const { seedDemoData } = require('../seedDemoData');
+    const result = await seedDemoData();
     
     res.json({
       success: true,
